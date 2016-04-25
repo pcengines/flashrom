@@ -34,6 +34,7 @@
  */
 const struct flashchip flashchips[] = {
 
+#if 0
 	/*
 	 * .vendor		= Vendor name
 	 * .name		= Chip name
@@ -7483,7 +7484,7 @@ const struct flashchip flashchips[] = {
 		.read		= spi_chip_read, /* Fast read (0x0B) supported */
 		.voltage	= {2700, 3600},
 	},
-
+#endif
 	{
 		.vendor		= "Macronix",
 		.name		= "MX25L1605A/MX25L1606E/MX25L1608E",
@@ -7524,7 +7525,7 @@ const struct flashchip flashchips[] = {
 		.read		= spi_chip_read, /* Fast read (0x0B) supported (MX25L1608E supports dual-I/O read) */
 		.voltage	= {2700, 3600},
 	},
-
+#if 0
 	{
 		.vendor		= "Macronix",
 		.name		= "MX25L1605D/MX25L1608D/MX25L1673E",
@@ -13501,7 +13502,7 @@ const struct flashchip flashchips[] = {
 		.read		= read_memmapped,
 		.voltage	= {3000, 3600},
 	},
-
+#endif
 	{
 		.vendor		= "SST",
 		.name		= "SST49LF160C",
@@ -13535,7 +13536,7 @@ const struct flashchip flashchips[] = {
 		.read		= read_memmapped,
 		.voltage	= {3000, 3600},
 	},
-
+#if 0
 	{
 		.vendor		= "ST",
 		.name		= "M29F002B",
@@ -14507,6 +14508,7 @@ const struct flashchip flashchips[] = {
 		.read		= spi_chip_read,
 		.voltage	= {2700, 3600},
 	},
+#endif
 
 	{
 		.vendor		= "Winbond",
@@ -14550,6 +14552,7 @@ const struct flashchip flashchips[] = {
 		.voltage	= {2700, 3600},
 	},
 
+#if 0
 	{
 		.vendor		= "Winbond",
 		.name		= "W25Q128.V",
@@ -16089,7 +16092,7 @@ const struct flashchip flashchips[] = {
 		.probe		= probe_spi_rems,
 		.write		= NULL,
 	},
-
+#endif
 	{0}
 };
 
