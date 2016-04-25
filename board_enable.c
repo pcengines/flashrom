@@ -32,6 +32,8 @@
 #include "hwaccess.h"
 
 #if defined(__i386__) || defined(__x86_64__)
+
+#if 0
 /*
  * Helper functions for many Winbond Super I/Os of the W836xx range.
  */
@@ -47,6 +49,7 @@ void w836xx_ext_leave(uint16_t port)
 {
 	OUTB(0xAA, port);
 }
+#endif
 
 /* Generic Super I/O helper functions */
 uint8_t sio_read(uint16_t port, uint8_t reg)
@@ -61,6 +64,7 @@ void sio_write(uint16_t port, uint8_t reg, uint8_t data)
 	OUTB(data, port + 1);
 }
 
+#if 0
 void sio_mask(uint16_t port, uint8_t reg, uint8_t data, uint8_t mask)
 {
 	uint8_t tmp;
@@ -2302,7 +2306,7 @@ static int p2_whitelist_laptop(void)
 
 /* Please keep this list alphabetically ordered by vendor/board name. */
 const struct board_match board_matches[] = {
-
+#if 0
 	/* first pci-id set [4],          second pci-id set [4],          dmi identifier, coreboot id [2],  phase, vendor name,  board name       max_rom_...  OK? flash enable */
 #if defined(__i386__) || defined(__x86_64__)
 	{0x10DE, 0x0547, 0x147B, 0x1C2F,  0x10DE, 0x0548, 0x147B, 0x1C2F, NULL,         NULL, NULL,           P3, "abit",        "AN-M2",                 0,   NT, nvidia_mcp_gpio2_raise},
@@ -2472,8 +2476,10 @@ const struct board_match board_matches[] = {
 	{0x1106, 0x3177, 0x1106, 0xAA01,  0x1106, 0x3123, 0x1106, 0xAA01, NULL,         NULL, NULL,           P3, "VIA",         "EPIA M/MII/...",        0,   OK, via_vt823x_gpio15_raise},
 	{0x1106, 0x0259, 0x1106, 0x3227,  0x1106, 0x3065, 0x1106, 0x3149, NULL,         NULL, NULL,           P3, "VIA",         "EPIA-N/NL",             0,   OK, via_vt823x_gpio9_raise},
 #endif
+#endif
 	{     0,      0,      0,      0,       0,      0,      0,      0, NULL,         NULL, NULL,           P3, NULL,          NULL,                    0,   NT, NULL}, /* end marker */
 };
+#endif
 
 int selfcheck_board_enables(void)
 {

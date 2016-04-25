@@ -43,6 +43,7 @@
 
 #if defined(__i386__) || defined(__x86_64__)
 
+#if 0 /* remove all board enable */
 static int enable_flash_ali_m1533(struct pci_dev *dev, const char *name)
 {
 	uint8_t tmp;
@@ -1224,6 +1225,7 @@ static int enable_flash_vt82c596(struct pci_dev *dev, const char *name)
 	max_rom_decode.parallel = 1024 * 1024;
 	return enable_flash_amd_via(dev, name, 0xE0);
 }
+#endif
 
 static int enable_flash_sb600(struct pci_dev *dev, const char *name)
 {
@@ -1298,6 +1300,7 @@ static int enable_flash_sb600(struct pci_dev *dev, const char *name)
 	return ret;
 }
 
+#if 0
 /* sets bit 0 in 0x6d */
 static int enable_flash_nvidia_common(struct pci_dev *dev, const char *name)
 {
@@ -1592,23 +1595,29 @@ static int get_flashbase_sc520(struct pci_dev *dev, const char *name)
 	physunmap(mmcr, getpagesize());
 	return 0;
 }
+#endif /* remove all board-enable */
 
 #endif
 
 /* Please keep this list numerically sorted by vendor/device ID. */
 const struct penable chipset_enables[] = {
 #if defined(__i386__) || defined(__x86_64__)
+#if 0
 	{0x1002, 0x4377, OK,  "ATI", "SB400",				enable_flash_sb400},
 	{0x1002, 0x438d, OK,  "AMD", "SB600",				enable_flash_sb600},
+#endif
 	{0x1002, 0x439d, OK,  "AMD", "SB7x0/SB8x0/SB9x0",		enable_flash_sb600},
+#if 0
 	{0x100b, 0x0510, NT,  "AMD", "SC1100",				enable_flash_sc1100},
 	{0x1022, 0x2080, OK,  "AMD", "CS5536",				enable_flash_cs5536},
 	{0x1022, 0x2090, OK,  "AMD", "CS5536",				enable_flash_cs5536},
 	{0x1022, 0x3000, OK,  "AMD", "Elan SC520",			get_flashbase_sc520},
 	{0x1022, 0x7440, OK,  "AMD", "AMD-768",				enable_flash_amd_768_8111},
 	{0x1022, 0x7468, OK,  "AMD", "AMD-8111",			enable_flash_amd_768_8111},
+#endif
 	{0x1022, 0x780e, OK,  "AMD", "FCH",				enable_flash_sb600},
 	{0x1022, 0x790e, OK,  "AMD", "FP4",				enable_flash_sb600},
+#if 0
 	{0x1039, 0x0406, NT,  "SiS", "501/5101/5501",			enable_flash_sis501},
 	{0x1039, 0x0496, NT,  "SiS", "85C496+497",			enable_flash_sis85c496},
 	{0x1039, 0x0530, OK,  "SiS", "530",				enable_flash_sis530},
@@ -1941,6 +1950,7 @@ const struct penable chipset_enables[] = {
 	{0x8086, 0xa245, NT,  "Intel", "C627 Series Chipset Supersku",	enable_flash_c620},
 	{0x8086, 0xa246, NT,  "Intel", "C628 Series Chipset Supersku",	enable_flash_c620},
 	{0x8086, 0xa247, NT,  "Intel", "C620 Series Chipset Supersku",	enable_flash_c620},
+#endif
 #endif
 	{0},
 };

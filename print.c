@@ -518,6 +518,7 @@ int print_supported(void)
 
 /* Please keep this list alphabetically ordered by vendor/board. */
 const struct board_info boards_known[] = {
+#if 0
 #if defined(__i386__) || defined(__x86_64__)
 	B("A-Trend",	"ATC-6220",		OK, "http://www.motherboard.cz/mb/atrend/atc6220.htm", NULL),
 	B("abit",	"A-S78H",		OK, NULL, NULL),
@@ -1140,12 +1141,13 @@ const struct board_info boards_known[] = {
 	B("ZOTAC",	"ZBOX AD02 (PLUS)",	OK, NULL, NULL),
 	B("ZOTAC",	"ZBOX HD-ID11",		OK, NULL, NULL),
 #endif
-
+#endif
 	{0},
 };
 
 /* Please keep this list alphabetically ordered by vendor/board. */
 const struct board_info laptops_known[] = {
+#if 0
 #if defined(__i386__) || defined(__x86_64__)
 	B("Acer",	"Aspire 1520",		OK, "http://support.acer.com/us/en/acerpanam/notebook/0000/Acer/Aspire1520/Aspire1520nv.shtml", NULL),
 	B("Acer",	"Aspire One",		BAD, NULL, "http://www.coreboot.org/pipermail/coreboot/2009-May/048041.html"),
@@ -1174,7 +1176,7 @@ const struct board_info laptops_known[] = {
 	//B("MSI",	"GT60-2OD",		OK, "http://www.msi.com/product/nb/GT60_2OD.html", NULL), requires layout patches
 	B("Teclast",	"X98 Air 3G",		OK, NULL, NULL),
 #endif
-
+#endif
 	{0},
 };
 #endif

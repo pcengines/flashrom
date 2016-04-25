@@ -1932,8 +1932,10 @@ void list_programmers(const char *delim)
 	enum programmer p;
 	for (p = 0; p < PROGRAMMER_INVALID; p++) {
 		msg_ginfo("%s", programmer_table[p].name);
+#if 0
 		if (p < PROGRAMMER_INVALID - 1)
 			msg_ginfo("%s", delim);
+#endif
 	}
 	msg_ginfo("\n");
 }
@@ -1967,6 +1969,7 @@ void list_programmers_linebreak(int startcol, int cols, int paren)
 		}
 		msg_ginfo("%s", pname);
 		remaining -= pnamelen;
+#if 0
 		if (p < PROGRAMMER_INVALID - 1) {
 			msg_ginfo(",");
 			remaining--;
@@ -1974,6 +1977,10 @@ void list_programmers_linebreak(int startcol, int cols, int paren)
 			if (paren)
 				msg_ginfo(")");
 		}
+#else
+		if (paren)
+			msg_ginfo(")");
+#endif
 	}
 }
 
