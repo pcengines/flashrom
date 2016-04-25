@@ -1482,10 +1482,12 @@ static int erase_and_write_block_helper(struct flashctx *flash,
 		ret = erasefn(flash, start, len);
 		if (ret)
 			return ret;
+#if 0
 		if (check_erased_range(flash, start, len)) {
 			msg_cerr("ERASE FAILED!\n");
 			return -1;
 		}
+#endif
 		/* Erase was successful. Adjust curcontents. */
 		memset(curcontents, 0xff, len);
 		skip = 0;
@@ -2033,6 +2035,11 @@ int doit(struct flashctx *flash, int force, const char *filename, int read_it,
 		 * knows very well that booting won't work.
 		 */
 		if (erase_and_write_flash(flash, oldcontents, newcontents)) {
+			emergency_help_message();
+			ret = 1;
+			goto out;
+		}
+		if (check_erased_range(flash, 0, size)) {
 			emergency_help_message();
 			ret = 1;
 		}
