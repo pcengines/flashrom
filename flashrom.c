@@ -1428,10 +1428,14 @@ out:
 
 int mmap_read(struct flashctx *flash, unsigned char *buf, unsigned int addr, unsigned int count)
 {
+	struct timespec start_doit, end_doit;
+	long int diff;
+
 	char *rom;
 	unsigned int size = flash->chip->total_size * 1024;
 	unsigned int bottom = (1ULL<<32) - size;
-	unsigned int p = 0, chunk = 64 * 1024;
+	unsigned long p = 0;
+	const int chunk = 64 * 1024;
 
 	rom = physmap_ro(NULL, bottom, size);
 	if (rom == NULL)
@@ -1441,12 +1445,23 @@ int mmap_read(struct flashctx *flash, unsigned char *buf, unsigned int addr, uns
 	if (addr & (chunk-1) || count & (chunk-1))
 		return -1;
 
+	clock_gettime(CLOCK_MONOTONIC, &start_doit);
+
 	while (p < size) {
 		memcpy(buf + p, rom + addr + p, chunk);
 		p += chunk;
 	}
 
+	clock_gettime(CLOCK_MONOTONIC, &end_doit);
+
+	diff = end_doit.tv_sec - start_doit.tv_sec;
+	diff *= 1000000;
+	diff += end_doit.tv_nsec / 1000;
+	diff -= start_doit.tv_nsec / 1000;
+
 	physunmap(rom, size);
+
+	msg_pdbg(" (%ld kBps) ", (8 * size) / (diff/1000) / 8);
 
 	return 0;
 }
