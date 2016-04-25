@@ -1680,8 +1680,13 @@ static int walk_by_layout(struct flashctx *const flashctx, struct walk_info *con
 			return 1;
 		}
 	}
-	if (all_skipped)
+	if (all_skipped) {
 		msg_cinfo("\nWarning: Chip content is identical to the requested image.\n");
+	} else if (check_erased_range(flashctx, 0, flash_size)) {
+		emergency_help_message();
+		return 1;
+	}
+
 	msg_cinfo("Erase/write done.\n");
 	return 0;
 }
@@ -1696,10 +1701,12 @@ static int erase_block(struct flashctx *const flashctx,
 	msg_cdbg("E");
 	if (erasefn(flashctx, info->erase_start, erase_len))
 		return 1;
+#if 0
 	if (check_erased_range(flashctx, info->erase_start, erase_len)) {
 		msg_cerr("ERASE FAILED!\n");
 		return 1;
 	}
+#endif
 	return 0;
 }
 
