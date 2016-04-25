@@ -373,17 +373,53 @@ static const struct spispeed spispeeds[] = {
 static int set_speed(struct pci_dev *dev, const struct spispeed *spispeed)
 {
 	bool success = false;
-	uint8_t speed = spispeed->speed;
+	uint8_t fast_speed = spispeed->speed;
+	uint8_t speed = fast_speed;
 
-	msg_pdbg("Setting SPI clock to %s (0x%x).\n", spispeed->name, speed);
+	/* Limit normal read to 33MHz. */
+	if (fast_speed == 0x00 || fast_speed == 0x04)
+		speed = 0x01;
+
 	if (amd_gen >= CHIPSET_YANGTZE) {
-		rmmio_writew((speed << 12) | (speed << 8) | (speed << 4) | speed, sb600_spibar + 0x22);
-		uint16_t tmp = mmio_readw(sb600_spibar + 0x22);
-		success = (((tmp >> 12) & 0xf) == speed && ((tmp >> 8) & 0xf) == speed &&
+		uint16_t tmp;
+
+		msg_pdbg("SPI clocks: (before)\n");
+		tmp = mmio_readw(sb600_spibar + 0x22);
+
+		msg_pdbg("NormSpeedNew is %s\n", spispeeds[(tmp >> 12) & 0xf].name);
+		msg_pdbg("FastSpeedNew is %s\n", spispeeds[(tmp >> 8) & 0xf].name);
+		msg_pdbg("AltSpeedNew is %s\n", spispeeds[(tmp >> 4) & 0xf].name);
+		msg_pdbg("TpmSpeedNew is %s\n", spispeeds[(tmp >> 0) & 0xf].name);
+
+		rmmio_writew((speed << 12) | (fast_speed << 8) | (speed << 4) | speed, sb600_spibar + 0x22);
+
+		msg_pdbg("SPI clocks: (after)\n");
+		tmp = mmio_readw(sb600_spibar + 0x22);
+		msg_pdbg("NormSpeedNew is %s\n", spispeeds[(tmp >> 12) & 0xf].name);
+		msg_pdbg("FastSpeedNew is %s\n", spispeeds[(tmp >> 8) & 0xf].name);
+		msg_pdbg("AltSpeedNew is %s\n", spispeeds[(tmp >> 4) & 0xf].name);
+		msg_pdbg("TpmSpeedNew is %s\n", spispeeds[(tmp >> 0) & 0xf].name);
+
+		success = (((tmp >> 12) & 0xf) == speed && ((tmp >> 8) & 0xf) == fast_speed &&
 			   ((tmp >> 4) & 0xf) == speed && ((tmp >> 0) & 0xf) == speed);
+
 	} else {
-		rmmio_writeb((mmio_readb(sb600_spibar + 0xd) & ~(0x3 << 4)) | (speed << 4), sb600_spibar + 0xd);
-		success = (speed == ((mmio_readb(sb600_spibar + 0xd) >> 4) & 0x3));
+		uint8_t tmp;
+
+		tmp = mmio_readb(sb600_spibar + 0x0d);
+		msg_pdbg("SPI clocks: (before)\n");
+		msg_pdbg("NormSpeed is %s\n", spispeeds[(tmp >> 4) & 0x3].name);
+		msg_pdbg("FastSpeed is %s\n", spispeeds[(tmp >> 6) & 0x3].name);
+
+		rmmio_writeb(((mmio_readb(sb600_spibar + 0xd) & ~(0xf << 4)) |
+			(fast_speed << 6) | (speed << 4)), sb600_spibar + 0xd);
+
+		tmp = mmio_readb(sb600_spibar + 0xd);
+		msg_pdbg("SPI clocks: (after)\n");
+		msg_pdbg("NormSpeed is %s\n", spispeeds[(tmp >> 4) & 0x3].name);
+		msg_pdbg("FastSpeed is %s\n", spispeeds[(tmp >> 6) & 0x3].name);
+
+		success = ((tmp & (0xf << 4)) == ((fast_speed << 6) | (speed << 4)));
 	}
 
 	if (!success) {
@@ -407,7 +443,14 @@ static int set_mode(struct pci_dev *dev, uint8_t read_mode)
 static int handle_speed(struct pci_dev *dev)
 {
 	uint32_t tmp;
-	uint8_t spispeed_idx = 3; /* Default to 16.5 MHz */
+	uint8_t spispeed_idx;
+
+	/* Default max speed, switch to Fast Read mode also. */
+	if (amd_gen >= CHIPSET_BOLTON)
+		spispeed_idx = 0x04; /* Default to 100 MHz. */
+	else
+		spispeed_idx = 0x00; /* Default to 66 MHz. */
+
 
 	char *spispeed = extract_programmer_param("spispeed");
 	if (spispeed != NULL) {
@@ -452,8 +495,14 @@ static int handle_speed(struct pci_dev *dev)
 		tmp = mmio_readl(sb600_spibar + 0x00);
 		uint8_t read_mode = ((tmp >> 28) & 0x6) | ((tmp >> 18) & 0x1);
 		msg_pdbg("SpiReadMode=%s (%i)\n", spireadmodes[read_mode], read_mode);
-		if (read_mode != 6) {
-			read_mode = 6; /* Default to "Normal (up to 66 MHz)" */
+
+		/* If 60MHz or 100MHz is requested, switch to Fast Read Mode. */
+		uint8_t wanted_read_mode = 6; /* Default to "Normal (up to 66 MHz)" */
+		if ((spispeeds[spispeed_idx].speed == 0x00) || (spispeeds[spispeed_idx].speed == 0x04))
+			wanted_read_mode = 7;
+
+		if (read_mode != wanted_read_mode) {
+			read_mode = wanted_read_mode;
 			if (set_mode(dev, read_mode) != 0) {
 				msg_perr("Setting read mode to \"%s\" failed.\n", spireadmodes[read_mode]);
 				return 1;
@@ -473,20 +522,19 @@ static int handle_speed(struct pci_dev *dev)
 				}
 				msg_pdbg("Enabling Spi100 succeeded.\n");
 			}
-
-			tmp = mmio_readw(sb600_spibar + 0x22); /* SPI 100 Speed Config */
-			msg_pdbg("NormSpeedNew is %s\n", spispeeds[(tmp >> 12) & 0xf].name);
-			msg_pdbg("FastSpeedNew is %s\n", spispeeds[(tmp >> 8) & 0xf].name);
-			msg_pdbg("AltSpeedNew is %s\n", spispeeds[(tmp >> 4) & 0xf].name);
-			msg_pdbg("TpmSpeedNew is %s\n", spispeeds[(tmp >> 0) & 0xf].name);
 		}
 	} else {
 		if (amd_gen >= CHIPSET_SB89XX && amd_gen <= CHIPSET_HUDSON234) {
 			bool fast_read = (mmio_readl(sb600_spibar + 0x00) >> 18) & 0x1;
 			msg_pdbg("Fast Reads are %sabled\n", fast_read ? "en" : "dis");
-			if (fast_read) {
+			if (fast_read && (spispeed_idx != 0x0)) {
 				msg_pdbg("Disabling them temporarily.\n");
 				rmmio_writel(mmio_readl(sb600_spibar + 0x00) & ~(0x1 << 18),
+					     sb600_spibar + 0x00);
+			}
+			if (!fast_read && (spispeed_idx == 0x0)) {
+				msg_pdbg("Enabling them temporarily.\n");
+				rmmio_writel(mmio_readl(sb600_spibar + 0x00) | (0x1 << 18),
 					     sb600_spibar + 0x00);
 			}
 		}
