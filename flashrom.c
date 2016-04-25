@@ -64,6 +64,8 @@ unsigned long flashbase;
 /* Is writing allowed with this programmer? */
 int programmer_may_write;
 
+static int enable_mmap_read = 1;
+
 const struct programmer_entry programmer_table[] = {
 #if CONFIG_INTERNAL == 1
 	{
@@ -1424,7 +1426,33 @@ out:
 #endif
 }
 
+int mmap_read(struct flashctx *flash, unsigned char *buf, unsigned int addr, unsigned int count)
+{
+	char *rom;
+	unsigned int size = flash->chip->total_size * 1024;
+	unsigned int bottom = (1ULL<<32) - size;
+	unsigned int p = 0, chunk = 64 * 1024;
+
+	rom = physmap_ro(NULL, bottom, size);
+	if (rom == NULL)
+		return -1;
+
+	/* Complete chunks only. */
+	if (addr & (chunk-1) || count & (chunk-1))
+		return -1;
+
+	while (p < size) {
+		memcpy(buf + p, rom + addr + p, chunk);
+		p += chunk;
+	}
+
+	physunmap(rom, size);
+
+	return 0;
+}
+
 static int read_by_layout(struct flashctx *, uint8_t *);
+
 int read_flash_to_file(struct flashctx *flash, const char *filename)
 {
 	unsigned long size = flash->chip->total_size * 1024;
@@ -1437,15 +1465,24 @@ int read_flash_to_file(struct flashctx *flash, const char *filename)
 		msg_cinfo("FAILED.\n");
 		return 1;
 	}
-	if (!flash->chip->read) {
-		msg_cerr("No read function available for this flash chip.\n");
-		ret = 1;
-		goto out_free;
-	}
-	if (read_by_layout(flash, buf)) {
-		msg_cerr("Read operation failed!\n");
-		ret = 1;
-		goto out_free;
+
+	if (!enable_mmap_read) {
+		if (!flash->chip->read) {
+			msg_cerr("No read function available for this flash chip.\n");
+			ret = 1;
+			goto out_free;
+		}
+		if (read_by_layout(flash, buf)) {
+			msg_cerr("Read operation failed!\n");
+			ret = 1;
+			goto out_free;
+		}
+	} else {
+		if (mmap_read(flash, buf, 0, size)) {
+			msg_cerr("Read operation failed!\n");
+			ret = 1;
+			goto out_free;
+		}
 	}
 
 	ret = write_buf_to_file(buf, size, filename);
@@ -2411,7 +2448,12 @@ int flashrom_image_write(struct flashctx *const flashctx, void *const buffer, co
 	 */
 	msg_cinfo("Reading old flash chip contents... ");
 	if (verify_all) {
-		if (flashctx->chip->read(flashctx, oldcontents, 0, flash_size)) {
+		if(enable_mmap_read) {
+			if(mmap_read(flashctx, oldcontents, 0, flash_size)) {
+				msg_cinfo("FAILED.\n");
+				goto _finalize_ret;
+			}
+		} else if (flashctx->chip->read(flashctx, oldcontents, 0, flash_size)) {
 			msg_cinfo("FAILED.\n");
 			goto _finalize_ret;
 		}
@@ -2430,15 +2472,27 @@ int flashrom_image_write(struct flashctx *const flashctx, void *const buffer, co
 		if (verify_all) {
 			msg_cerr("Checking if anything has changed.\n");
 			msg_cinfo("Reading current flash chip contents... ");
-			if (!flashctx->chip->read(flashctx, curcontents, 0, flash_size)) {
-				msg_cinfo("done.\n");
-				if (!memcmp(oldcontents, curcontents, flash_size)) {
-					nonfatal_help_message();
-					goto _finalize_ret;
-				}
-				msg_cerr("Apparently at least some data has changed.\n");
-			} else
-				msg_cerr("Can't even read anymore!\n");
+			if(enable_mmap_read){ 
+				if (!mmap_read(flashctx, curcontents, 0, flash_size);)
+					msg_cinfo("done.\n");
+					if (!memcmp(oldcontents, curcontents, flash_size)) {
+						nonfatal_help_message();
+						goto _finalize_ret;
+					}
+					msg_cerr("Apparently at least some data has changed.\n");
+				} else
+					msg_cerr("Can't even read anymore!\n");
+			} else {
+				if (!flashctx->chip->read(flashctx, curcontents, 0, flash_size)) {
+					msg_cinfo("done.\n");
+					if (!memcmp(oldcontents, curcontents, flash_size)) {
+						nonfatal_help_message();
+						goto _finalize_ret;
+					}
+					msg_cerr("Apparently at least some data has changed.\n");
+				} else
+					msg_cerr("Can't even read anymore!\n");
+			}
 			emergency_help_message();
 			goto _finalize_ret;
 		} else {
