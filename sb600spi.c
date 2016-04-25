@@ -57,7 +57,7 @@ enum amd_chipset {
 static enum amd_chipset amd_gen = CHIPSET_AMD_UNKNOWN;
 
 #define FIFO_SIZE_OLD		8
-#define FIFO_SIZE_YANGTZE	71
+#define FIFO_SIZE_YANGTZE	67
 
 static int sb600_spi_send_command(struct flashctx *flash, unsigned int writecnt, unsigned int readcnt,
 				  const unsigned char *writearr, unsigned char *readarr);
@@ -317,6 +317,8 @@ static int spi100_spi_send_command(struct flashctx *flash, unsigned int writecnt
 				  const unsigned char *writearr,
 				  unsigned char *readarr)
 {
+	static u32 fifo_bounce[18];
+
 	/* First byte is cmd which can not be sent through the buffer. */
 	unsigned char cmd = *writearr++;
 	writecnt--;
@@ -342,10 +344,11 @@ static int spi100_spi_send_command(struct flashctx *flash, unsigned int writecnt
 	execute_command();
 
 	msg_pspew("Reading buffer: ");
-	for (count = 0; count < readcnt; count++) {
-		readarr[count] = mmio_readb(sb600_spibar + 0x80 + (writecnt + count) % FIFO_SIZE_YANGTZE);
-		msg_pspew("[%02x]", readarr[count]);
-	}
+	for (count = (writecnt & ~0x03); count < (writecnt + readcnt); count += 4)
+		fifo_bounce[count/4] = mmio_readl(sb600_spibar + 0x80 + count);
+	for (count = writecnt; count < (writecnt + readcnt); count++)
+		msg_pspew("[%02x]", *((u8*)fifo_bounce + count));
+	memcpy(readarr, (u8*)fifo_bounce + writecnt, readcnt);
 	msg_pspew("\n");
 
 	return 0;
