@@ -147,12 +147,14 @@ int spi_chip_write_256(struct flashctx *flash, const uint8_t *buf, unsigned int 
 uint32_t spi_get_valid_read_addr(struct flashctx *flash)
 {
 	switch (flash->mst->spi.type) {
+#if 0
 #if CONFIG_INTERNAL == 1
 #if defined(__i386__) || defined(__x86_64__)
 	case SPI_CONTROLLER_ICH7:
 	case SPI_CONTROLLER_ICH9:
 		/* Return BBAR for ICH chipsets. */
 		return ichspi_bbar;
+#endif
 #endif
 #endif
 	default:
