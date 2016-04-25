@@ -527,6 +527,7 @@ static int handle_speed(struct pci_dev *dev)
 	return set_speed(dev, &spispeeds[spispeed_idx]);
 }
 
+#if 0
 static int handle_imc(struct pci_dev *dev)
 {
 	/* Handle IMC everywhere but sb600 which does not have one. */
@@ -575,6 +576,7 @@ static int handle_imc(struct pci_dev *dev)
 
 	return amd_imc_shutdown(dev);
 }
+#endif
 
 int sb600_probe_spi(struct pci_dev *dev)
 {
@@ -737,8 +739,10 @@ int sb600_probe_spi(struct pci_dev *dev)
 	if (handle_speed(dev) != 0)
 		return ERROR_FATAL;
 
+#if 0
 	if (handle_imc(dev) != 0)
 		return ERROR_FATAL;
+#endif
 
 	/* Starting with Yangtze the SPI controller got a different interface with a much bigger buffer. */
 	if (amd_gen != CHIPSET_YANGTZE)
