@@ -30,6 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdlib.h>
+#include <time.h>
 #include <errno.h>
 #include <ctype.h>
 #include <getopt.h>
@@ -46,6 +47,8 @@ const char *chip_to_probe = NULL;
 
 static enum programmer programmer = PROGRAMMER_INVALID;
 static const char *programmer_param = NULL;
+
+static void posix_nanosleep(unsigned int usecs);
 
 /*
  * Programmers supporting multiple buses can have differing size limits on
@@ -68,7 +71,11 @@ const struct programmer_entry programmer_table[] = {
 		.init			= internal_init,
 		.map_flash_region	= physmap,
 		.unmap_flash_region	= physunmap,
+#if 0
 		.delay			= internal_delay,
+#else
+		.delay			= posix_nanosleep,
+#endif
 	},
 #endif
 
@@ -581,6 +588,16 @@ void programmer_delay(unsigned int usecs)
 {
 	if (usecs > 0)
 		programmer_table[programmer].delay(usecs);
+}
+
+static void posix_nanosleep(unsigned int usecs)
+{
+	struct timespec dt;
+
+	dt.tv_sec = usecs / 1000000;
+	dt.tv_nsec = (usecs % 1000000) * 1000;
+
+	nanosleep(&dt, NULL);
 }
 
 int read_memmapped(struct flashctx *flash, uint8_t *buf, unsigned int start,
