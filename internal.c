@@ -96,10 +96,12 @@ struct pci_dev *pci_card_find(uint16_t vendor, uint16_t device,
 }
 #endif
 
-#if CONFIG_INTERNAL == 1
 int force_boardenable = 0;
 int force_boardmismatch = 0;
 
+#if CONFIG_INTERNAL == 1
+
+#if 0
 #if defined(__i386__) || defined(__x86_64__)
 void probe_superio(void)
 {
@@ -126,6 +128,7 @@ int register_superio(struct superio s)
 	return 0;
 }
 
+#endif
 #endif
 
 int is_laptop = 0;
@@ -155,6 +158,9 @@ static const struct par_master par_master_internal = {
 		.chip_writel		= internal_chip_writel,
 		.chip_writen		= fallback_chip_writen,
 };
+
+#endif
+
 
 enum chipbustype internal_buses_supported = BUS_NONE;
 
@@ -267,10 +273,12 @@ int internal_init(void)
 
 	/* In case Super I/O probing would cause pretty explosions. */
 	board_handle_before_superio();
-
-	/* Probe for the Super I/O chip and fill global struct superio. */
+#if 0
+	/* Probe for the Super I/O chip and fill global struct superio#. */
 	probe_superio();
+#endif
 #else
+
 	/* FIXME: Enable cbtable searching on all non-x86 platforms supported
 	 *        by coreboot.
 	 * FIXME: Find a replacement for DMI on non-x86.
@@ -326,7 +334,9 @@ int internal_init(void)
 #if IS_X86
 	/* Probe unconditionally for ITE Super I/O chips. This enables LPC->SPI translation on IT87* and
 	 * parallel writes on IT8705F. Also, this handles the manual chip select for Gigabyte's DualBIOS. */
+#if 0
 	init_superio_ite();
+#endif
 
 	if (board_flash_enable(board_vendor, board_model, cb_vendor, cb_model)) {
 		msg_perr("Aborting to be safe.\n");
@@ -356,7 +366,6 @@ int internal_init(void)
 	return 1;
 #endif
 }
-#endif
 
 static void internal_chip_writeb(const struct flashctx *flash, uint8_t val,
 				 chipaddr addr)
