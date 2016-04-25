@@ -429,8 +429,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
+#if 0
 	/* FIXME: Delay calibration should happen in programmer code. */
 	myusec_calibrate_delay();
+#endif
 
 	if (programmer_init(prog, pparam)) {
 		msg_perr("Error: Programmer initialization failed.\n");
