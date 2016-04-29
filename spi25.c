@@ -966,6 +966,7 @@ int spi_read_chunked(struct flashctx *flash, uint8_t *buf, unsigned int start,
 		lenhere = min(start + len, (i + 1) * page_size) - starthere;
 		for (j = 0; j < lenhere; j += chunksize) {
 			toread = min(chunksize, lenhere - j);
+			progress_bar(ph_read, 0, 0);
 			rc = spi_nbyte_read(flash, starthere + j, buf + starthere - start + j, toread);
 			if (rc)
 				break;
@@ -1011,6 +1012,7 @@ int spi_write_chunked(struct flashctx *flash, const uint8_t *buf, unsigned int s
 		lenhere = min(start + len, (i + 1) * page_size) - starthere;
 		for (j = 0; j < lenhere; j += chunksize) {
 			towrite = min(chunksize, lenhere - j);
+			progress_bar(ph_write, 0, 0);
 			rc = spi_nbyte_program(flash, starthere + j, buf + starthere - start + j, towrite);
 			if (rc)
 				break;
