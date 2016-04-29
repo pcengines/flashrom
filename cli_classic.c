@@ -553,6 +553,7 @@ int main(int argc, char *argv[])
 		goto out_shutdown;
 	}
 
+
 	flashrom_layout_set(fill_flash, layout);
 	flashrom_flag_set(fill_flash, FLASHROM_FLAG_FORCE, !!force);
 #if CONFIG_INTERNAL == 1
@@ -560,6 +561,8 @@ int main(int argc, char *argv[])
 #endif
 	flashrom_flag_set(fill_flash, FLASHROM_FLAG_VERIFY_AFTER_WRITE, !dont_verify_it);
 	flashrom_flag_set(fill_flash, FLASHROM_FLAG_VERIFY_WHOLE_CHIP, !dont_verify_all);
+
+	progress_bar_init();
 
 	/* FIXME: We should issue an unconditional chip reset here. This can be
 	 * done once we have a .reset function in struct flashchip.
@@ -575,6 +578,7 @@ int main(int argc, char *argv[])
 	else if (verify_it)
 		ret = do_verify(fill_flash, filename);
 
+	progress_bar_exit(ret);
 	apu_close();
 
 	flashrom_layout_release(layout);

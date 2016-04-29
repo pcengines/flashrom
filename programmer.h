@@ -390,6 +390,11 @@ enum part { pn_unknown = 0, pn_apu1, pn_apu2 };
 int apu_open(enum part pn);
 void apu_close(void);
 
+enum phase { ph_init = 0, ph_read, ph_write, ph_erase, ph_error, ph_success };
+void progress_bar_init(void);
+void progress_bar(enum phase cmd, const uintptr_t pos, const uintptr_t max);
+void progress_bar_exit(int ret);
+
 /* dummyflasher.c */
 #if CONFIG_DUMMY == 1
 int dummy_init(void);
