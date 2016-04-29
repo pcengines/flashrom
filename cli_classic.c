@@ -546,6 +546,8 @@ int main(int argc, char *argv[])
 	programmer_delay(100000);
 	ret |= doit(fill_flash, force, filename, read_it, write_it, erase_it, verify_it);
 
+	apu_close();
+
 	unmap_flash(fill_flash);
 out_shutdown:
 	programmer_shutdown();

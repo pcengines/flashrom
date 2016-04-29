@@ -142,3 +142,10 @@ enum chipbustype get_buses_supported(void)
 
 	return ret;
 }
+
+void disable_masters(enum chipbustype bus)
+{
+	int i;
+	for (i = 0; i < registered_master_count; i++)
+		registered_masters[i].buses_supported &= ~bus;
+}
