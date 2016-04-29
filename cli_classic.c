@@ -539,6 +539,8 @@ int main(int argc, char *argv[])
 		goto out_shutdown;
 	}
 
+	progress_bar_init();
+
 	/* FIXME: We should issue an unconditional chip reset here. This can be
 	 * done once we have a .reset function in struct flashchip.
 	 * Give the chip time to settle.
@@ -546,6 +548,7 @@ int main(int argc, char *argv[])
 	programmer_delay(100000);
 	ret |= doit(fill_flash, force, filename, read_it, write_it, erase_it, verify_it);
 
+	progress_bar_exit(ret);
 	apu_close();
 
 	unmap_flash(fill_flash);

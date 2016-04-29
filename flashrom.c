@@ -1404,6 +1404,7 @@ int mmap_read(struct flashctx *flash, unsigned char *buf, unsigned int addr, uns
 	clock_gettime(CLOCK_MONOTONIC, &start_doit);
 
 	while (p < size) {
+		progress_bar(ph_read, p, size);
 		memcpy(buf + p, rom + addr + p, chunk);
 		p += chunk;
 	}
@@ -1546,6 +1547,7 @@ static int erase_and_write_block_helper(struct flashctx *flash,
 	msg_cdbg(":");
 	if (need_erase(curcontents, newcontents, len, gran)) {
 		msg_cdbg("E");
+		progress_bar(ph_erase, 0, 0);
 		ret = erasefn(flash, start, len);
 		if (ret)
 			return ret;
@@ -1565,6 +1567,7 @@ static int erase_and_write_block_helper(struct flashctx *flash,
 					 len - starthere, &starthere, gran))) {
 		if (!writecount++)
 			msg_cdbg("W");
+		progress_bar(ph_write, 0, 0);
 		/* Needs the partial write function signature. */
 		ret = flash->chip->write(flash, newcontents + starthere,
 				   start + starthere, lenhere);

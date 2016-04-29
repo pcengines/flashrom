@@ -19,6 +19,7 @@
  */
 
 #include <string.h>
+#include <time.h>
 #include "programmer.h"
 #include "hwaccess.h"
 #include "flash.h"
@@ -140,6 +141,25 @@ static int apu1_detect(enum chipbustype dongle)
 	return 0;
 }
 
+static void apu1_set_leds(char d5, char d6, char d7)
+{
+	if (d5) {
+		mmio_writeb(0x8, gpiobase + 0x1bf);
+	} else {
+		mmio_writeb(0xc8, gpiobase + 0x1bf);
+	}
+	if (d6) {
+		mmio_writeb(0x8, gpiobase + 0x1be);
+	} else {
+		mmio_writeb(0xc8, gpiobase + 0x1be);
+	}
+	if (d7) {
+		mmio_writeb(0x8, gpiobase + 0x1bd);
+	} else {
+		mmio_writeb(0xc8, gpiobase + 0x1bd);
+	}
+}
+
 /* PC Engines APU2 product */
 
 static int apu2_detect(enum chipbustype dongle)
@@ -177,4 +197,108 @@ static int apu2_detect(enum chipbustype dongle)
 	}
 
 	return 0;
+}
+
+static void apu2_set_leds(char d4, char d5, char d6)
+{
+	uint32_t *gpio;
+
+	gpio = gpiobase + 0x1500 + 70 * sizeof(u32);
+	if (d4) {
+		mmio_writel(mmio_readl(gpio) & ~(1<<22), gpio);
+	} else {
+		mmio_writel(mmio_readl(gpio) | (1<<22), gpio);
+	}
+
+	gpio = gpiobase + 0x1500 + 69 * sizeof(u32);
+	if (d5) {
+		mmio_writel(mmio_readl(gpio) & ~(1<<22), gpio);
+	} else {
+		mmio_writel(mmio_readl(gpio) | (1<<22), gpio);
+	}
+
+	gpio = gpiobase + 0x1500 + 68 * sizeof(u32);
+	if (d6) {
+		mmio_writel(mmio_readl(gpio) & ~(1<<22), gpio);
+	} else {
+		mmio_writel(mmio_readl(gpio) | (1<<22), gpio);
+	}
+}
+
+
+
+static char s_wr, s_rd, s_act;
+
+static void led_set(char act, char rd, char wr)
+{
+	s_act = act;
+	s_rd = rd;
+	s_wr = wr;
+
+	if (partno == pn_apu1)
+		apu1_set_leds(s_wr, s_rd, s_act);
+	else if (partno == pn_apu2)
+		apu2_set_leds(s_wr, s_rd, s_act);
+}
+
+static void led_toggle(char act, char rd, char wr)
+{
+	if (act)
+		s_act = !s_act;
+	if (rd)
+		s_rd = !s_rd;
+	if (wr)
+		s_wr = !s_wr;
+
+	if (partno == pn_apu1)
+		apu1_set_leds(s_wr, s_rd, s_act);
+	else if (partno == pn_apu2)
+		apu2_set_leds(s_wr, s_rd, s_act);
+}
+
+static void led_update(enum phase cmd)
+{
+	static enum phase last_cmd;
+
+	if (cmd == ph_success)
+		led_set(0, 0, 1);
+	else if (cmd == ph_error)
+		led_set(1, 1, 1);
+	else {
+		if (cmd != last_cmd) {
+			last_cmd = cmd;
+			led_set(0, 0, 0);
+		}
+		led_toggle(1, cmd == ph_read, (cmd == ph_erase) || (cmd == ph_write));
+	}
+}
+
+static struct timespec next_led_toggle;
+
+void progress_bar_init(void)
+{
+	clock_gettime(CLOCK_MONOTONIC, &next_led_toggle);
+}
+
+void progress_bar(enum phase cmd, const uintptr_t pos, const uintptr_t max)
+{
+	struct timespec current;
+
+	clock_gettime(CLOCK_MONOTONIC, &current);
+	if ((current.tv_sec < next_led_toggle.tv_sec) ||
+		((current.tv_sec == next_led_toggle.tv_sec) &&
+		(current.tv_nsec < next_led_toggle.tv_nsec)))
+		return;
+	
+	next_led_toggle = current;
+	next_led_toggle.tv_nsec += 250*1000*1000;
+	next_led_toggle.tv_sec += (next_led_toggle.tv_nsec / (1000*1000*1000));
+	next_led_toggle.tv_nsec %= 1000*1000*1000;
+
+	led_update(cmd);
+}
+
+void progress_bar_exit(int err)
+{
+	led_update((err < 0) ? ph_error : ph_success);
 }
