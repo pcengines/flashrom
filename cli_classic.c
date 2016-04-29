@@ -575,6 +575,8 @@ int main(int argc, char *argv[])
 	else if (verify_it)
 		ret = do_verify(fill_flash, filename);
 
+	apu_close();
+
 	flashrom_layout_release(layout);
 
 out_shutdown:

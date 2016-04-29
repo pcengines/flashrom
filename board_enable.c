@@ -2264,6 +2264,16 @@ static int p2_whitelist_laptop(void)
 
 #endif
 
+static int apu1_detection(void)
+{
+	return apu_open(pn_apu1);
+}
+
+static int apu2_detection(void)
+{
+	return apu_open(pn_apu2);
+}
+
 /*
  * Below is the list of boards which need a special "board enable" code in
  * flashrom before their ROM chip can be accessed/written to.
@@ -2477,6 +2487,8 @@ const struct board_match board_matches[] = {
 	{0x1106, 0x0259, 0x1106, 0x3227,  0x1106, 0x3065, 0x1106, 0x3149, NULL,         NULL, NULL,           P3, "VIA",         "EPIA-N/NL",             0,   OK, via_vt823x_gpio9_raise},
 #endif
 #endif
+	{0x1002, 0x439d, 0x1002, 0x439d, 0x1002, 0x439d, 0x1002, 0x439d, NULL, NULL, NULL, P3, "PC Engines", "apu1", 0, OK, apu1_detection},
+	{0x1022, 0x780e, 0x1022, 0x780e, 0x1022, 0x780e, 0x1022, 0x780e, NULL, NULL, NULL, P3, "PC Engines", "apu2", 0, OK, apu2_detection},
 	{     0,      0,      0,      0,       0,      0,      0,      0, NULL,         NULL, NULL,           P3, NULL,          NULL,                    0,   NT, NULL}, /* end marker */
 };
 #endif
@@ -2725,9 +2737,13 @@ int board_flash_enable(const char *vendor, const char *model, const char *cb_ven
 		max_rom_decode.parallel = board->max_rom_decode_parallel * 1024;
 
 	if (board->enable != NULL) {
+#if 0
 		msg_pinfo("Enabling full flash access for board \"%s %s\"... ",
 			  board->vendor_name, board->board_name);
-
+#else
+		msg_pinfo("Identifying board \"%s %s\"... ",
+			  board->vendor_name, board->board_name);
+#endif
 		ret = board->enable();
 		if (ret)
 			msg_pinfo("FAILED!\n");

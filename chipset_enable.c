@@ -1258,10 +1258,14 @@ static int enable_flash_sb600(struct pci_dev *dev, const char *name)
 		msg_pdbg("done.\n");
 	}
 
+	/* Extend LPC decode region to include flash chip registers. */
+	rpci_write_word(dev, 0x6c, 0xff80);
+
 	internal_buses_supported = BUS_LPC | BUS_FWH;
 
 	ret = sb600_probe_spi(dev);
 
+#if 0
 	/* Read ROM strap override register. */
 	OUTB(0x8f, 0xcd6);
 	reg = INB(0xcd7);
@@ -1284,6 +1288,7 @@ static int enable_flash_sb600(struct pci_dev *dev, const char *name)
 		}
 	}
 	msg_pdbg("\n");
+#endif
 
 	/* Force enable SPI ROM in SB600 PM register.
 	 * If we enable SPI ROM here, we have to disable it after we leave.

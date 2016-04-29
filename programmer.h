@@ -385,6 +385,11 @@ void rmmio_valb(void *addr);
 void rmmio_valw(void *addr);
 void rmmio_vall(void *addr);
 
+/* pcengines.c */
+enum part { pn_unknown = 0, pn_apu1, pn_apu2 };
+int apu_open(enum part pn);
+void apu_close(void);
+
 /* dummyflasher.c */
 #if CONFIG_DUMMY == 1
 int dummy_init(void);
@@ -734,6 +739,8 @@ struct registered_master {
 extern struct registered_master registered_masters[];
 extern int registered_master_count;
 int register_master(const struct registered_master *mst);
+
+void disable_masters(enum chipbustype bus);
 
 /* serprog.c */
 #if CONFIG_SERPROG == 1
