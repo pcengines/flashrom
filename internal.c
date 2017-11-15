@@ -97,7 +97,7 @@ struct pci_dev *pci_card_find(uint16_t vendor, uint16_t device,
 #endif
 
 int force_boardenable = 0;
-int force_boardmismatch = 0;
+int force_boardmismatch = 1; /* by default ignore boardmismatch */
 
 #if CONFIG_INTERNAL == 1
 
