@@ -531,12 +531,9 @@ CLI_OBJS = cli_classic.o cli_output.o cli_common.o print.o
 # Set the flashrom version string from the highest revision number of the checked out flashrom files.
 # Note to packagers: Any tree exported with "make export" or "make tarball"
 # will not require subversion. The downloadable snapshots are already exported.
-SVNVERSION := $(shell ./util/getrevision.sh -u 2>/dev/null )
+SVNVERSION := $(shell ./util/getrevision.sh --revision 2>/dev/null )
 
-EXTRAVERSION := $(shell ./util/getrevision.sh -l 2>/dev/null )
-
-RELEASE := 1.0.0
-VERSION := $(RELEASE)-$(SVNVERSION)-$(EXTRAVERSION)
+VERSION := $(SVNVERSION)
 RELEASENAME ?= $(VERSION)
 
 SVNDEF := -D'FLASHROM_VERSION="$(VERSION)"'
