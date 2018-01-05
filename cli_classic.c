@@ -63,7 +63,7 @@ static void cli_classic_usage(const char *name)
 #endif
 	       " -p | --programmer <name>[:<param>] specify the programmer device. One of\n");
 	list_programmers_linebreak(4, 80, 0);
-	printf("\n\n -p internal:recovery_dongle=<chip_bus_type> specify firmware chip bus type SPI, LPC or FWH\n");
+	printf("\n\n -p internal:recovery_dongle=<chip_bus_type> specify firmware chip bus type SPI (spi1a), LPC (lpc1a) or FWH\n");
 
 	printf(".\n\nYou can specify one of -h, -R, -L, "
 #if CONFIG_PRINT_WIKI == 1
