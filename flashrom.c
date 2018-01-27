@@ -1661,6 +1661,21 @@ struct walk_info {
 /* returns 0 on success, 1 to retry with another erase function, 2 for immediate abort */
 typedef int (*per_blockfn_t)(struct flashctx *, const struct walk_info *, erasefn_t);
 
+static void emergency_help_message(void)
+{
+	msg_gerr("Your flash chip is in an unknown state.\n");
+#if CONFIG_INTERNAL == 1
+	if (programmer == PROGRAMMER_INTERNAL)
+		msg_gerr("Get help on IRC at chat.freenode.net (channel #flashrom) or\n"
+			"mail flashrom@flashrom.org with the subject \"FAILED: <your board name>\"!\n"
+			"-------------------------------------------------------------------------------\n"
+			"DO NOT REBOOT OR POWEROFF!\n");
+	else
+#endif
+		msg_gerr("Please report this on IRC at chat.freenode.net (channel #flashrom) or\n"
+			 "mail flashrom@flashrom.org, thanks!\n");
+}
+
 static int walk_eraseblocks(struct flashctx *const flashctx,
 			    struct walk_info *const info,
 			    const size_t erasefunction, const per_blockfn_t per_blockfn)
@@ -1705,6 +1720,7 @@ static int walk_by_layout(struct flashctx *const flashctx, struct walk_info *con
 			  const per_blockfn_t per_blockfn)
 {
 	const struct flashrom_layout *const layout = get_layout(flashctx);
+	const size_t flash_size = flashctx->chip->total_size * 1024;
 
 	all_skipped = true;
 	msg_cinfo("Erasing and writing flash chip... ");
@@ -1963,21 +1979,6 @@ static void nonfatal_help_message(void)
 		msg_gerr("Please check the connections (especially those to write protection pins) between\n"
 			 "the programmer and the flash chip. If you think the error is caused by flashrom\n"
 			 "please report this on IRC at chat.freenode.net (channel #flashrom) or\n"
-			 "mail flashrom@flashrom.org, thanks!\n");
-}
-
-static void emergency_help_message(void)
-{
-	msg_gerr("Your flash chip is in an unknown state.\n");
-#if CONFIG_INTERNAL == 1
-	if (programmer == PROGRAMMER_INTERNAL)
-		msg_gerr("Get help on IRC at chat.freenode.net (channel #flashrom) or\n"
-			"mail flashrom@flashrom.org with the subject \"FAILED: <your board name>\"!\n"
-			"-------------------------------------------------------------------------------\n"
-			"DO NOT REBOOT OR POWEROFF!\n");
-	else
-#endif
-		msg_gerr("Please report this on IRC at chat.freenode.net (channel #flashrom) or\n"
 			 "mail flashrom@flashrom.org, thanks!\n");
 }
 
@@ -2490,16 +2491,17 @@ int flashrom_image_write(struct flashctx *const flashctx, void *const buffer, co
 		if (verify_all) {
 			msg_cerr("Checking if anything has changed.\n");
 			msg_cinfo("Reading current flash chip contents... ");
-			if(enable_mmap_read){ 
-				if (!mmap_read(flashctx, curcontents, 0, flash_size);)
+			if(enable_mmap_read) { 
+				if (!mmap_read(flashctx, curcontents, 0, flash_size)) {
 					msg_cinfo("done.\n");
 					if (!memcmp(oldcontents, curcontents, flash_size)) {
 						nonfatal_help_message();
 						goto _finalize_ret;
 					}
 					msg_cerr("Apparently at least some data has changed.\n");
-				} else
+				} else {
 					msg_cerr("Can't even read anymore!\n");
+				}
 			} else {
 				if (!flashctx->chip->read(flashctx, curcontents, 0, flash_size)) {
 					msg_cinfo("done.\n");
@@ -2508,8 +2510,9 @@ int flashrom_image_write(struct flashctx *const flashctx, void *const buffer, co
 						goto _finalize_ret;
 					}
 					msg_cerr("Apparently at least some data has changed.\n");
-				} else
+				} else {
 					msg_cerr("Can't even read anymore!\n");
+				}
 			}
 			emergency_help_message();
 			goto _finalize_ret;
