@@ -1720,7 +1720,6 @@ static int walk_by_layout(struct flashctx *const flashctx, struct walk_info *con
 			  const per_blockfn_t per_blockfn)
 {
 	const struct flashrom_layout *const layout = get_layout(flashctx);
-	const size_t flash_size = flashctx->chip->total_size * 1024;
 
 	all_skipped = true;
 	msg_cinfo("Erasing and writing flash chip... ");
@@ -1766,12 +1765,8 @@ static int walk_by_layout(struct flashctx *const flashctx, struct walk_info *con
 			return 1;
 		}
 	}
-	if (all_skipped) {
+	if (all_skipped)
 		msg_cinfo("\nWarning: Chip content is identical to the requested image.\n");
-	} else if (check_erased_range(flashctx, 0, flash_size)) {
-		emergency_help_message();
-		return 1;
-	}
 
 	msg_cinfo("Erase/write done.\n");
 	return 0;
@@ -1788,12 +1783,12 @@ static int erase_block(struct flashctx *const flashctx,
 	progress_bar(ph_erase, 0, 0);
 	if (erasefn(flashctx, info->erase_start, erase_len))
 		return 1;
-#if 0
+
 	if (check_erased_range(flashctx, info->erase_start, erase_len)) {
 		msg_cerr("ERASE FAILED!\n");
 		return 1;
 	}
-#endif
+
 	return 0;
 }
 
