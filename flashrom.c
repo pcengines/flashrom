@@ -1950,8 +1950,12 @@ static int verify_by_layout(struct flashctx *const flashctx,
 		const chipoff_t region_start	= layout->entries[i].start;
 		const chipsize_t region_len	= layout->entries[i].end - layout->entries[i].start + 1;
 
-		if (flashctx->chip->read(flashctx, curcontents + region_start, region_start, region_len))
+		if (enable_mmap_read){
+			if(mmap_read(flashctx, curcontents + region_start, region_start, region_len))
+				return 1;
+		} else if (flashctx->chip->read(flashctx, curcontents + region_start, region_start, region_len)) {
 			return 1;
+		}
 		if (compare_range(newcontents + region_start, curcontents + region_start,
 				  region_start, region_len))
 			return 3;
