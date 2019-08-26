@@ -317,7 +317,7 @@ static int spi100_spi_send_command(struct flashctx *flash, unsigned int writecnt
 				  const unsigned char *writearr,
 				  unsigned char *readarr)
 {
-	static u32 fifo_bounce[18];
+	static uint32_t fifo_bounce[18];
 
 	/* First byte is cmd which can not be sent through the buffer. */
 	unsigned char cmd = *writearr++;
@@ -347,8 +347,8 @@ static int spi100_spi_send_command(struct flashctx *flash, unsigned int writecnt
 	for (count = (writecnt & ~0x03); count < (writecnt + readcnt); count += 4)
 		fifo_bounce[count/4] = mmio_readl(sb600_spibar + 0x80 + count);
 	for (count = writecnt; count < (writecnt + readcnt); count++)
-		msg_pspew("[%02x]", *((u8*)fifo_bounce + count));
-	memcpy(readarr, (u8*)fifo_bounce + writecnt, readcnt);
+		msg_pspew("[%02x]", *((uint8_t*)fifo_bounce + count));
+	memcpy(readarr, (uint8_t*)fifo_bounce + writecnt, readcnt);
 	msg_pspew("\n");
 
 	return 0;

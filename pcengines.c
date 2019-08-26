@@ -168,7 +168,7 @@ static int apu2_detect(enum chipbustype dongle)
 	uint32_t *gpio;
 	uint32_t val;
 
-	gpio = gpiobase + 0x1500 + 76 * sizeof(u32);
+	gpio = gpiobase + 0x1500 + 76 * sizeof(uint32_t);
 
 	/* Set input with pull-down enable. */
 	val = mmio_readl(gpio);
@@ -203,21 +203,21 @@ static void apu2_set_leds(char d4, char d5, char d6)
 {
 	uint32_t *gpio;
 
-	gpio = gpiobase + 0x1500 + 70 * sizeof(u32);
+	gpio = gpiobase + 0x1500 + 70 * sizeof(uint32_t);
 	if (d4) {
 		mmio_writel(mmio_readl(gpio) & ~(1<<22), gpio);
 	} else {
 		mmio_writel(mmio_readl(gpio) | (1<<22), gpio);
 	}
 
-	gpio = gpiobase + 0x1500 + 69 * sizeof(u32);
+	gpio = gpiobase + 0x1500 + 69 * sizeof(uint32_t);
 	if (d5) {
 		mmio_writel(mmio_readl(gpio) & ~(1<<22), gpio);
 	} else {
 		mmio_writel(mmio_readl(gpio) | (1<<22), gpio);
 	}
 
-	gpio = gpiobase + 0x1500 + 68 * sizeof(u32);
+	gpio = gpiobase + 0x1500 + 68 * sizeof(uint32_t);
 	if (d6) {
 		mmio_writel(mmio_readl(gpio) & ~(1<<22), gpio);
 	} else {

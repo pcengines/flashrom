@@ -39,6 +39,8 @@ EXPORTDIR ?= .
 RANLIB  ?= ranlib
 PKG_CONFIG ?= pkg-config
 BUILD_DETAILS_FILE ?= build_details.txt
+src := $(CURDIR)
+CFLAGS += -I$(src)
 
 # The following parameter changes the default programmer that will be used if there is no -p/--programmer
 # argument given when running flashrom. The predefined setting does not enable any default so that every
@@ -516,13 +518,12 @@ endif
 #	sst49lfxxxc.o sst_fwhub.o flashchips.o spi.o spi25.o spi25_statusreg.o \
 #	opaque.o sfdp.o en29lv640b.o at45db.o
 
-CHIP_OBJS = jedec.o flashchips.o spi.o spi25.o spi25_statusreg.o 82802ab.o sst49lfxxxc.o
+CHIP_OBJS = jedec.o flashchips.o spi.o spi25.o spi25_statusreg.o opaque.o 82802ab.o sst49lfxxxc.o
 
 ###############################################################################
 # Library code.
 
-LIB_OBJS = libflashrom.o layout.o flashrom.o programmer.o helpers.o ich_descriptors.o
-
+LIB_OBJS = libflashrom.o layout.o udelay.o flash_access.o flashrom.o programmer.o helpers.o ich_descriptors.o
 ###############################################################################
 # Frontend related stuff.
 

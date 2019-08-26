@@ -31,6 +31,37 @@
 #include "flashchips.h"
 #include "programmer.h"
 #include "libflashrom.h"
+#include "flash_access.h"
+#include "winbond_flash.h"
+#include "adesto_flash.h"
+
+typedef union {
+	struct  {
+		uint8_t busy : 1;
+		uint8_t wel  : 1;
+		uint8_t bp0  : 1;
+		uint8_t bp1  : 1;
+		uint8_t bp2  : 1;
+		uint8_t tb   : 1;
+		uint8_t sec  : 1;
+		uint8_t srp0 : 1;
+	};
+	uint8_t reg_value;
+} sr1_t;
+
+typedef union {
+	struct  {
+		uint8_t srp1 : 1;
+		uint8_t qe   : 1;
+		uint8_t rsvd : 1;
+		uint8_t lb1  : 1;
+		uint8_t lb2  : 1;
+		uint8_t lb3  : 1;
+		uint8_t cmp  : 1;
+		uint8_t sus  : 1;
+	};
+	uint8_t reg_value;
+} sr2_t;
 
 static void cli_classic_usage(const char *name)
 {
@@ -61,6 +92,7 @@ static void cli_classic_usage(const char *name)
 	       " -i | --image <name>                only flash image <name> from flash layout\n"
 	       " -o | --output <logfile>            log output to <logfile>\n"
 	       " -L | --list-supported              print supported devices\n"
+		   "      --lock                        lock WP_RO region in SPI flash and set OTP mode\n"
 #if CONFIG_PRINT_WIKI == 1
 	       " -z | --list-supported-wiki         print supported devices in wiki syntax\n"
 #endif
@@ -102,7 +134,7 @@ int main(int argc, char *argv[])
 	struct flashctx *fill_flash;
 	const char *name;
 	int namelen, opt, i, j;
-	int startchip = -1, chipcount = 0, option_index = 0, force = 0, ifd = 0;
+	int startchip = -1, chipcount = 0, option_index = 0, force = 0, ifd = 0, lock = 0;
 #if CONFIG_PRINT_WIKI == 1
 	int list_supported_wiki = 0;
 #endif
@@ -132,6 +164,7 @@ int main(int argc, char *argv[])
 		{"help",		0, NULL, 'h'},
 		{"version",		0, NULL, 'R'},
 		{"output",		1, NULL, 'o'},
+		{"lock",        0, NULL, 0x0101},
 		{NULL,			0, NULL, 0},
 	};
 
@@ -252,6 +285,9 @@ int main(int argc, char *argv[])
 				cli_classic_abort_usage();
 			}
 			list_supported = 1;
+			break;
+		case 0x0101:
+			lock = 1;
 			break;
 		case 'z':
 #if CONFIG_PRINT_WIKI == 1
@@ -542,7 +578,7 @@ int main(int argc, char *argv[])
 		goto out_shutdown;
 	}
 
-	if (!(read_it | write_it | verify_it | erase_it)) {
+	if (!(read_it | write_it | verify_it | erase_it | lock)) {
 		msg_ginfo("No operations were specified.\n");
 		goto out_shutdown;
 	}
@@ -555,6 +591,115 @@ int main(int argc, char *argv[])
 		goto out_shutdown;
 	}
 
+	if (lock){
+		sr1_t sr1;
+		sr2_t sr2;
+
+		// First read current status registers SR1 and SR2
+
+		if (send_flash_cmd(CMD_AT25DF_RDSR1, &sr1.reg_value, 1)) {
+			printf("SPI status register 1 read failed!\n");
+			printf("Setting block protection failed!\n");
+			goto out_shutdown;
+		}
+
+		programmer_delay(500);
+
+		if (send_flash_cmd(CMD_AT25DF_RDSR2, &sr2.reg_value, 1)) {
+			printf("SPI status register 2 read failed!\n");
+			printf("Setting block protection failed!\n");
+			goto out_shutdown;
+		}
+
+		if (sr1.srp0 || sr2.srp1) {
+			printf("SPI status register protection is enabled.\n");
+			printf("Disable the protection first!\n");
+			goto out_shutdown;
+		}
+		
+
+		// Now write block protection to WP_RO region (0x200000 - 0x77777)
+
+		uint8_t status_regs_old[2] = { 
+			(sr1.reg_value & 0xFC),
+			(sr2.reg_value & 0x41)
+		};
+
+		sr1.reg_value &= 0x83;
+		sr1.reg_value |= 0x34;			
+		sr2.cmp = 1;
+
+		uint8_t status_regs[2] = { sr1.reg_value, sr2.reg_value};
+
+		if (send_flash_cmd(CMD_AT25DF_WREN, NULL, 0)) {
+			printf("Sending write enable command failed!\n");
+			printf("Setting block protection failed!\n");
+			goto out_shutdown;
+		}
+
+		if (send_flash_cmd_write(CMD_AT25DF_WRSR1, 1, status_regs, 2)) {
+			printf("Writing status registers failed!\n");
+			printf("Setting block protection failed!\n");
+			goto out_shutdown;
+		}
+
+		programmer_delay(500);
+
+		if (send_flash_cmd(CMD_AT25DF_RDSR1, &sr1.reg_value, 1)) {
+			printf("SPI status register 1 read failed!\n");
+			printf("Setting block protection failed!\n");
+			goto out_shutdown;
+		}
+
+		programmer_delay(500);
+
+		if (send_flash_cmd(CMD_AT25DF_RDSR2, &sr2.reg_value, 1)) {
+			printf("SPI status register 2 read failed!\n");
+			printf("Setting block protection failed!\n");
+			goto out_shutdown;
+		}
+
+		if(status_regs_old[0] == (sr1.reg_value & 0xFC ) &&
+			status_regs_old[1] == (sr2.reg_value & 0x41)) {
+			printf("Setting block protection failed!\n");
+		} 
+		else {
+			printf("Setting block protection success!\n");
+		}
+
+		// Now set SRP0 and SRP1 bits ---> set SPI flash in OTP mode
+
+		sr1.srp0 = 1;
+		sr2.srp1 = 1;
+
+		if (send_flash_cmd(CMD_AT25DF_WREN, NULL, 0)) {
+			printf("Sending write enable command failed!\n");
+			printf("Setting status register protection failed!\n");
+			goto out_shutdown;
+		}
+
+		if (send_flash_cmd_write(CMD_AT25DF_WRSR1, 1, status_regs, 2)) {
+			printf("Writing status registers failed!\n");
+			printf("Setting status register protection failed!\n");
+			goto out_shutdown;
+		}
+
+		programmer_delay(500);
+
+		if (send_flash_cmd(CMD_AT25DF_RDSR1, &sr1.reg_value, 1)) {
+			printf("SPI status register 1 read failed!\n");
+			printf("Setting status register protection failed!\n");
+			goto out_shutdown;
+		}
+
+		programmer_delay(500);
+
+		if (send_flash_cmd(CMD_AT25DF_RDSR2, &sr2.reg_value, 1)) {
+			printf("SPI status register 2 read failed!\n");
+			printf("Setting status register protection failed!\n");
+			goto out_shutdown;
+		}
+	}
 
 	flashrom_layout_set(fill_flash, layout);
 	flashrom_flag_set(fill_flash, FLASHROM_FLAG_FORCE, !!force);
