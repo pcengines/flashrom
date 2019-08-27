@@ -31,6 +31,7 @@
 #include "flashchips.h"
 #include "programmer.h"
 #include "libflashrom.h"
+#include "spi.h"
 
 static void cli_classic_usage(const char *name)
 {
@@ -61,6 +62,7 @@ static void cli_classic_usage(const char *name)
 	       " -i | --image <name>                only flash image <name> from flash layout\n"
 	       " -o | --output <logfile>            log output to <logfile>\n"
 	       " -L | --list-supported              print supported devices\n"
+		   "      --lock                        lock WP_RO region in SPI flash and set OTP mode\n"
 #if CONFIG_PRINT_WIKI == 1
 	       " -z | --list-supported-wiki         print supported devices in wiki syntax\n"
 #endif
@@ -102,7 +104,7 @@ int main(int argc, char *argv[])
 	struct flashctx *fill_flash;
 	const char *name;
 	int namelen, opt, i, j;
-	int startchip = -1, chipcount = 0, option_index = 0, force = 0, ifd = 0;
+	int startchip = -1, chipcount = 0, option_index = 0, force = 0, ifd = 0, lock = 0;
 #if CONFIG_PRINT_WIKI == 1
 	int list_supported_wiki = 0;
 #endif
@@ -132,6 +134,7 @@ int main(int argc, char *argv[])
 		{"help",		0, NULL, 'h'},
 		{"version",		0, NULL, 'R'},
 		{"output",		1, NULL, 'o'},
+		{"lock",        0, NULL, 0x0101},
 		{NULL,			0, NULL, 0},
 	};
 
@@ -252,6 +255,9 @@ int main(int argc, char *argv[])
 				cli_classic_abort_usage();
 			}
 			list_supported = 1;
+			break;
+		case 0x0101:
+			lock = 1;
 			break;
 		case 'z':
 #if CONFIG_PRINT_WIKI == 1
@@ -542,7 +548,7 @@ int main(int argc, char *argv[])
 		goto out_shutdown;
 	}
 
-	if (!(read_it | write_it | verify_it | erase_it)) {
+	if (!(read_it | write_it | verify_it | erase_it | lock)) {
 		msg_ginfo("No operations were specified.\n");
 		goto out_shutdown;
 	}
@@ -555,6 +561,93 @@ int main(int argc, char *argv[])
 		goto out_shutdown;
 	}
 
+	//int ret = spi_send_command(flash, sizeof(cmd), 0, cmd, NULL);
+
+	if (lock){
+
+		unsigned char cmd[1] = {0x05};
+		unsigned char readarr[1];
+		unsigned char sr1, sr2;
+
+		//BUG?: spi_send_command return value is always 0, even if data is read correctly.
+		//	    Therefore spi_send_command return value is not used.
+
+		msg_ginfo("1. Read SR1 and SR2\n");
+
+		//Read status register 1
+		cmd[0] = 0x05;
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr1), cmd, &sr1);
+		msg_ginfo("SR1 = 0x%02x\n", sr1);
+
+		//Read status register 2
+		cmd[0] = 0x35;
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr2), cmd, &sr2);
+		msg_ginfo("SR2 = 0x%02x\n", sr2);
+
+		if ((sr1 & 0x80) && (sr2 & 0x01)){
+			msg_ginfo("SPI flash is in One Time Program mode. Can't write to it anymore!\n");
+		}
+
+		msg_ginfo("2. Write new values to SR1 = 0x34, SR2 = 0x40\n");
+
+		// Write enable command
+		cmd[0] = 0x06;
+		spi_send_command(fill_flash, sizeof(cmd), 0, cmd, NULL);
+
+		// Write status register 1
+		sr1 &= 0x83;		// 
+		sr1 |= 0x34;		// Set SEC, TB, BP2, BP1, BP0 bits
+		sr2 &= 0x41;
+		sr2 |= 0x40;		// Enable CMP to reach WP_RO region (0x200000 - 0x77777)
+		unsigned char cmd_write[3] = {0x01, sr1, sr2};
+		spi_send_command(fill_flash, sizeof(cmd_write), 0, cmd_write, NULL);
+
+		msg_ginfo("3. Read updated SR1 i SR2\n");
+		//Verify if SR1 and SR2 are written correctly
+		// Read status register 1
+		cmd[0] = 0x05;
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(readarr), cmd, readarr);
+		msg_ginfo("SR1 = 0x%02x\n", readarr[0]);
+
+		// Read status register 2
+		cmd[0] = 0x35;
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(readarr), cmd, readarr);
+		msg_ginfo("SR2 = 0x%02x\n", readarr[0]);
+
+		/*
+		// uncomment when read/write commands will be verified as 100% working
+		// Set SPI flash in One Time Program mode
+
+		msg_ginfo("4. Set OTP mode. First, Write enable.\n");
+		// Write enable command
+		cmd[0] = 0x06;
+		spi_send_command(fill_flash, sizeof(cmd), 0, cmd, NULL);
+
+		msg_ginfo("5. SR1.7 = 1 and SR2.0 = 1\n");    // SRP = 1 and SRP1 = 1 means OTP mode
+		// Write status register 1
+		sr1 &= 0x7F;		// 
+		sr1 |= 0x80;		// Set SRP bit
+		sr2 &= 0xFE;
+		sr2 |= 0x01;		// Set SRP1 bit
+		cmd_write[0] = 0x01;
+		cmd_write[1] = sr1;
+		cmd_write[2] = sr2;
+
+		spi_send_command(fill_flash, sizeof(cmd_write), 0, cmd_write, NULL);
+
+		msg_ginfo("3. Read updated SR1 i SR2\n");
+		//Verify if SR1 and SR2 are written correctly
+		// Read status register 1
+		cmd[0] = 0x05;
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(readarr), cmd, readarr);
+		msg_ginfo("SR1 = 0x%02x\n", readarr[0]);
+
+		// Read status register 2
+		cmd[0] = 0x35;
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(readarr), cmd, readarr);
+		msg_ginfo("SR2 = 0x%02x\n", readarr[0]);
+		*/
+	}
 
 	flashrom_layout_set(fill_flash, layout);
 	flashrom_flag_set(fill_flash, FLASHROM_FLAG_FORCE, !!force);

@@ -516,13 +516,12 @@ endif
 #	sst49lfxxxc.o sst_fwhub.o flashchips.o spi.o spi25.o spi25_statusreg.o \
 #	opaque.o sfdp.o en29lv640b.o at45db.o
 
-CHIP_OBJS = jedec.o flashchips.o spi.o spi25.o spi25_statusreg.o 82802ab.o sst49lfxxxc.o
+CHIP_OBJS = jedec.o flashchips.o spi.o spi25.o spi25_statusreg.o opaque.o 82802ab.o sst49lfxxxc.o
 
 ###############################################################################
 # Library code.
 
-LIB_OBJS = libflashrom.o layout.o flashrom.o programmer.o helpers.o ich_descriptors.o
-
+LIB_OBJS = libflashrom.o layout.o udelay.o flashrom.o programmer.o helpers.o ich_descriptors.o
 ###############################################################################
 # Frontend related stuff.
 
