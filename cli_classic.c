@@ -566,7 +566,7 @@ int main(int argc, char *argv[])
 	if (lock){
 
 		unsigned char cmd[1] = {0x05};
-		unsigned char readarr[1];
+		//unsigned char readarr[1];
 		unsigned char sr1, sr2;
 
 		//BUG?: spi_send_command return value is always 0, even if data is read correctly.
@@ -579,6 +579,8 @@ int main(int argc, char *argv[])
 		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr1), cmd, &sr1);
 		msg_ginfo("SR1 = 0x%02x\n", sr1);
 
+		programmer_delay(100);
+
 		//Read status register 2
 		cmd[0] = 0x35;
 		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr2), cmd, &sr2);
@@ -590,9 +592,13 @@ int main(int argc, char *argv[])
 
 		msg_ginfo("2. Write new values to SR1 = 0x34, SR2 = 0x40\n");
 
+		programmer_delay(100);
+
 		// Write enable command
 		cmd[0] = 0x06;
 		spi_send_command(fill_flash, sizeof(cmd), 0, cmd, NULL);
+
+		programmer_delay(1000);
 
 		// Write status register 1
 		sr1 &= 0x83;		// 
@@ -602,51 +608,64 @@ int main(int argc, char *argv[])
 		unsigned char cmd_write[3] = {0x01, sr1, sr2};
 		spi_send_command(fill_flash, sizeof(cmd_write), 0, cmd_write, NULL);
 
-		msg_ginfo("3. Read updated SR1 i SR2\n");
+		programmer_delay(1000);
+
+		msg_ginfo("3. Read updated SR1 and SR2\n");
 		//Verify if SR1 and SR2 are written correctly
-		// Read status register 1
+		//Read status register 1
 		cmd[0] = 0x05;
-		spi_send_command(fill_flash, sizeof(cmd), sizeof(readarr), cmd, readarr);
-		msg_ginfo("SR1 = 0x%02x\n", readarr[0]);
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr1), cmd, &sr1);
+		msg_ginfo("SR1 = 0x%02x\n", sr1);
 
-		// Read status register 2
+		programmer_delay(100);
+
+		//Read status register 2
 		cmd[0] = 0x35;
-		spi_send_command(fill_flash, sizeof(cmd), sizeof(readarr), cmd, readarr);
-		msg_ginfo("SR2 = 0x%02x\n", readarr[0]);
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr2), cmd, &sr2);
+		msg_ginfo("SR2 = 0x%02x\n", sr2);
 
-		/*
-		// uncomment when read/write commands will be verified as 100% working
+		programmer_delay(100);
+
 		// Set SPI flash in One Time Program mode
+		msg_ginfo("4. Set OTP mode.\n");
 
-		msg_ginfo("4. Set OTP mode. First, Write enable.\n");
-		// Write enable command
-		cmd[0] = 0x06;
-		spi_send_command(fill_flash, sizeof(cmd), 0, cmd, NULL);
-
-		msg_ginfo("5. SR1.7 = 1 and SR2.0 = 1\n");    // SRP = 1 and SRP1 = 1 means OTP mode
-		// Write status register 1
 		sr1 &= 0x7F;		// 
 		sr1 |= 0x80;		// Set SRP bit
 		sr2 &= 0xFE;
 		sr2 |= 0x01;		// Set SRP1 bit
+
+		msg_ginfo("5. Write enable command\n");
+		// Write enable command
+		cmd[0] = 0x06;
+		spi_send_command(fill_flash, sizeof(cmd), 0, cmd, NULL);
+
+		programmer_delay(1000);
+
+		msg_ginfo("6. SR1.7 = 1 and SR2.0 = 1\n");    // SRP = 1 and SRP1 = 1 means OTP mode
+		// Write status register 1
 		cmd_write[0] = 0x01;
 		cmd_write[1] = sr1;
 		cmd_write[2] = sr2;
 
 		spi_send_command(fill_flash, sizeof(cmd_write), 0, cmd_write, NULL);
 
-		msg_ginfo("3. Read updated SR1 i SR2\n");
+		programmer_delay(1000);
+
+		msg_ginfo("7. Read updated SR1 and SR2\n");
 		//Verify if SR1 and SR2 are written correctly
 		// Read status register 1
 		cmd[0] = 0x05;
-		spi_send_command(fill_flash, sizeof(cmd), sizeof(readarr), cmd, readarr);
-		msg_ginfo("SR1 = 0x%02x\n", readarr[0]);
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr1), cmd, &sr1);
+		msg_ginfo("SR1 = 0x%02x\n", sr1);
 
-		// Read status register 2
+		programmer_delay(100);
+
+		//Read status register 2
 		cmd[0] = 0x35;
-		spi_send_command(fill_flash, sizeof(cmd), sizeof(readarr), cmd, readarr);
-		msg_ginfo("SR2 = 0x%02x\n", readarr[0]);
-		*/
+		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr2), cmd, &sr2);
+		msg_ginfo("SR2 = 0x%02x\n", sr2);
+
+		programmer_delay(100);
 	}
 
 	flashrom_layout_set(fill_flash, layout);
