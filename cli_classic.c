@@ -62,7 +62,7 @@ static void cli_classic_usage(const char *name)
 	       " -i | --image <name>                only flash image <name> from flash layout\n"
 	       " -o | --output <logfile>            log output to <logfile>\n"
 	       " -L | --list-supported              print supported devices\n"
-		   "      --lock                        lock WP_RO region in SPI flash and set OTP mode\n"
+	       "      --lock                        lock WP_RO region in SPI flash and set OTP mode\n"
 #if CONFIG_PRINT_WIKI == 1
 	       " -z | --list-supported-wiki         print supported devices in wiki syntax\n"
 #endif
@@ -134,7 +134,7 @@ int main(int argc, char *argv[])
 		{"help",		0, NULL, 'h'},
 		{"version",		0, NULL, 'R'},
 		{"output",		1, NULL, 'o'},
-		{"lock",        0, NULL, 0x0101},
+		{"lock",        	0, NULL, 0x0101},
 		{NULL,			0, NULL, 0},
 	};
 
@@ -561,36 +561,34 @@ int main(int argc, char *argv[])
 		goto out_shutdown;
 	}
 
-	//int ret = spi_send_command(flash, sizeof(cmd), 0, cmd, NULL);
-
 	if (lock){
 
 		unsigned char cmd[1] = {0x05};
-		//unsigned char readarr[1];
 		unsigned char sr1, sr2;
 
-		//BUG?: spi_send_command return value is always 0, even if data is read correctly.
-		//	    Therefore spi_send_command return value is not used.
-
-		msg_ginfo("1. Read SR1 and SR2\n");
+		msg_gdbg("1. Read SR1 and SR2\n");
 
 		//Read status register 1
 		cmd[0] = 0x05;
 		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr1), cmd, &sr1);
-		msg_ginfo("SR1 = 0x%02x\n", sr1);
+		msg_gdbg("SR1 = 0x%02x\n", sr1);
 
 		programmer_delay(100);
 
 		//Read status register 2
 		cmd[0] = 0x35;
 		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr2), cmd, &sr2);
-		msg_ginfo("SR2 = 0x%02x\n", sr2);
+		msg_gdbg("SR2 = 0x%02x\n", sr2);
 
 		if ((sr1 & 0x80) && (sr2 & 0x01)){
 			msg_ginfo("SPI flash is in One Time Program mode. Can't write to it anymore!\n");
 		}
 
-		msg_ginfo("2. Write new values to SR1 = 0x34, SR2 = 0x40\n");
+		/*
+			 Set SPI flash block protect to WP_RO region (0x200000 - 0x7FFFFF)
+		*/
+
+		msg_gdbg("2. Write new values to SR1 = 0x34, SR2 = 0x40\n");
 
 		programmer_delay(100);
 
@@ -604,44 +602,52 @@ int main(int argc, char *argv[])
 		sr1 &= 0x83;		// 
 		sr1 |= 0x34;		// Set SEC, TB, BP2, BP1, BP0 bits
 		sr2 &= 0x41;
-		sr2 |= 0x40;		// Enable CMP to reach WP_RO region (0x200000 - 0x77777)
+		sr2 |= 0x40;		// Enable CMP to reach WP_RO region (0x200000 - 0x7FFFFF)
 		unsigned char cmd_write[3] = {0x01, sr1, sr2};
 		spi_send_command(fill_flash, sizeof(cmd_write), 0, cmd_write, NULL);
 
 		programmer_delay(1000);
 
-		msg_ginfo("3. Read updated SR1 and SR2\n");
+		msg_gdbg("3. Read updated SR1 and SR2\n");
 		//Verify if SR1 and SR2 are written correctly
 		//Read status register 1
 		cmd[0] = 0x05;
 		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr1), cmd, &sr1);
-		msg_ginfo("SR1 = 0x%02x\n", sr1);
+		msg_gdbg("SR1 = 0x%02x\n", sr1);
 
 		programmer_delay(100);
 
 		//Read status register 2
 		cmd[0] = 0x35;
 		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr2), cmd, &sr2);
-		msg_ginfo("SR2 = 0x%02x\n", sr2);
+		msg_gdbg("SR2 = 0x%02x\n", sr2);
 
 		programmer_delay(100);
 
-		// Set SPI flash in One Time Program mode
-		msg_ginfo("4. Set OTP mode.\n");
+		if ((sr1 & 0x34) && (sr2 & 0x40)){
+			msg_ginfo("Block protection successfully set for WP_RO region!\n");
+		}
+		else
+		{
+			msg_ginfo("Set block protection for WP_RO region FAILED! Please retry --lock command\n");
+		}
+		
+		/*
+			 Set SPI flash in One Time Program mode
+		*/
+		msg_gdbg("4. Set OTP mode.\n");
 
-		sr1 &= 0x7F;		// 
 		sr1 |= 0x80;		// Set SRP bit
-		sr2 &= 0xFE;
 		sr2 |= 0x01;		// Set SRP1 bit
 
-		msg_ginfo("5. Write enable command\n");
+		msg_gdbg("5. Write enable command\n");
 		// Write enable command
 		cmd[0] = 0x06;
 		spi_send_command(fill_flash, sizeof(cmd), 0, cmd, NULL);
 
 		programmer_delay(1000);
 
-		msg_ginfo("6. SR1.7 = 1 and SR2.0 = 1\n");    // SRP = 1 and SRP1 = 1 means OTP mode
+		msg_gdbg("6. SR1.7 = 1 and SR2.0 = 1\n");    // SRP = 1 and SRP1 = 1 means OTP mode
 		// Write status register 1
 		cmd_write[0] = 0x01;
 		cmd_write[1] = sr1;
@@ -651,21 +657,29 @@ int main(int argc, char *argv[])
 
 		programmer_delay(1000);
 
-		msg_ginfo("7. Read updated SR1 and SR2\n");
+		msg_gdbg("7. Read updated SR1 and SR2\n");
 		//Verify if SR1 and SR2 are written correctly
 		// Read status register 1
 		cmd[0] = 0x05;
 		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr1), cmd, &sr1);
-		msg_ginfo("SR1 = 0x%02x\n", sr1);
+		msg_gdbg("SR1 = 0x%02x\n", sr1);
 
 		programmer_delay(100);
 
 		//Read status register 2
 		cmd[0] = 0x35;
 		spi_send_command(fill_flash, sizeof(cmd), sizeof(sr2), cmd, &sr2);
-		msg_ginfo("SR2 = 0x%02x\n", sr2);
+		msg_gdbg("SR2 = 0x%02x\n", sr2);
 
 		programmer_delay(100);
+
+		if ((sr1 & 0x80 ) && (sr2 & 0x01)){
+			msg_ginfo("SPI flash is in One Time Program mode!\n");
+		}
+		else
+		{
+			msg_ginfo("Enable One Time Program mode FAILED! Please retry --lock command\n");
+		}
 	}
 
 	flashrom_layout_set(fill_flash, layout);
