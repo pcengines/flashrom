@@ -13472,7 +13472,7 @@ const struct flashchip flashchips[] = {
 		.read		= read_memmapped,
 		.voltage	= {3000, 3600},
 	},
-
+#endif
 	{
 		.vendor		= "SST",
 		.name		= "SST49LF080A",
@@ -13502,7 +13502,7 @@ const struct flashchip flashchips[] = {
 		.read		= read_memmapped,
 		.voltage	= {3000, 3600},
 	},
-#endif
+
 	{
 		.vendor		= "SST",
 		.name		= "SST49LF160C",
